@@ -2,21 +2,6 @@
 
 This file outlines tasks for maintaining project documentation and reviewing existing guideline files.
 
-## Review and Clarify `CLAUDE.md`
-
--   [ ] **Determine the purpose of `CLAUDE.md`:**
-    *   Read `CLAUDE.md` and compare its content with `GUIDELINES.md`, `README.md`, and `PROJECT_TODO.md` (now split into smaller TODOs).
-    *   Identify unique information in `CLAUDE.md` vs. redundant information.
-    *   *Note: `CLAUDE.md` seems to be a mix of high-level overview, dev commands, and personal notes. It mentions updating itself and `README.md`.* Developer seems to be using it as a scratchpad.
--   [ ] **Integrate relevant information:**
-    *   If any unique and valuable development notes or specific Claude-related API insights are found, integrate them into the appropriate new TODO files (e.g., `TODO_API_INTEGRATIONS.md` for Claude API specifics) or `README.md` if they are general setup/run commands.
-    *   Development commands listed (backend, frontend, test) should be verified and added to the main `README.md` if not already present and accurate.
--   [ ] **Decision on `CLAUDE.md`:**
-    *   Based on the review, decide whether to:
-        *   **Remove `CLAUDE.md`**: If all its useful content is migrated and it becomes redundant.
-        *   **Archive `CLAUDE.md`**: Move it to an `archive/` directory if it might have historical value but is no longer actively maintained.
-        *   **Repurpose `CLAUDE.md`**: If there's a clear, specific purpose for it that doesn't overlap (e.g., very detailed notes *only* for Anthropic Claude development, unlikely given project scope).
-    *   *Initial assessment suggests most of its content is covered or better placed elsewhere. Likely candidate for removal after ensuring no info is lost.*
 
 ## Update `README.md`
 
