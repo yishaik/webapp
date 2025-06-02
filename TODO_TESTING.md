@@ -1,54 +1,56 @@
 # Testing TODO
 
-This file outlines tasks for setting up testing frameworks and writing tests for the Prompt Builder & Optimizer application.
+**Last Updated: 2025-06-02**
+
+**Status:** Testing frameworks for both backend (`pytest`) and frontend (Jest/RTL with MSW) are **set up and operational**. `README.md` includes instructions for running tests. Initial unit and integration tests exist. The focus moving forward is on increasing test coverage and maintaining tests as the application evolves.
 
 ## Backend Testing (Python/FastAPI with `pytest`)
 
--   **Setup `pytest` Framework**
-    -   [ ] Add `pytest` and `httpx` (for testing FastAPI endpoints) to `backend/requirements.txt` (or `requirements-dev.txt`).
-    -   [ ] Create a `backend/tests` directory.
-    -   [ ] Configure `pytest` (e.g., `pytest.ini` or `pyproject.toml`) if necessary.
-    -   [ ] Setup a test database configuration (e.g., in-memory SQLite or a separate test DB file) for tests that interact with the database. Ensure test data is isolated and cleaned up.
+-   **`pytest` Framework Setup**
+    -   **Status:** Completed.
+    -   **Details:** `pytest` and `httpx` are included in backend dependencies. `backend/tests` directory is structured with `unit` and `integration` subdirectories. Test database configuration is in place, as evidenced by `tests/unit/test_crud.py`. `README.md` provides commands to run these tests.
 
--   **Write Initial Backend Unit Tests (`backend/tests/unit`)**
-    -   [ ] **Test Core Logic:**
-        *   Write tests for the dynamic questionnaire generation logic (`backend/ ... /questionnaire_logic.py` or similar).
-        *   Write tests for the prompt optimization engine (`backend/prompt_optimizer.py`).
-        *   Write tests for the model recommendation logic.
-    -   [ ] **Test API Handlers (Mocks):**
-        *   Write tests for individual API handlers (`backend/api_handlers/*_handler.py`), mocking external API calls to avoid actual network requests during unit tests.
-    -   [ ] **Test CRUD Operations:**
-        *   Write tests for database CRUD operations (`backend/crud.py`) using the test database.
+-   **Backend Unit Tests (`backend/tests/unit`)**
+    -   **Status:** Initial tests implemented; ongoing effort for comprehensive coverage.
+    -   **Details:** `tests/unit/test_crud.py` exists.
+    -   **Ongoing:** Continuously add unit tests for:
+        *   Core logic (dynamic questionnaire, prompt optimizer, model recommender).
+        *   API handlers (mocking external calls).
+        *   Other utility functions and modules.
 
--   **Write Initial Backend Integration Tests (`backend/tests/integration`)**
-    -   [ ] **Test API Endpoints:**
-        *   Write tests for core API endpoints (e.g., `/generate_questionnaire`, `/submit_questionnaire`, `/optimize_prompt`, `/recommend_models`, `/get_model_response`) using `httpx` to make requests to the test client.
-        *   Ensure endpoints correctly interact with services, CRUD operations, and return expected responses/status codes.
-        *   Test protected endpoints with and without authentication.
+-   **Backend Integration Tests (`backend/tests/integration`)**
+    -   **Status:** Initial tests implemented; ongoing effort for comprehensive coverage.
+    -   **Details:** `tests/integration/test_main_api.py` exists.
+    -   **Ongoing:** Continuously add integration tests for:
+        *   All API endpoints, covering various scenarios and request parameters.
+        *   Interactions between services.
+        *   Authentication and authorization for protected endpoints.
 
 ## Frontend Testing (React with Jest & React Testing Library)
 
--   **Setup Jest and React Testing Library (RTL)**
-    -   [ ] Ensure Jest and RTL are set up in the `frontend` project (usually included with Create React App, or need manual setup with Vite).
-    -   [ ] Add any necessary Jest configuration (e.g., `frontend/jest.config.js` or in `package.json`).
-    -   [ ] Setup mock service worker (`msw`) or similar to mock API calls in frontend tests.
+-   **Jest and React Testing Library (RTL) Setup**
+    -   **Status:** Completed.
+    -   **Details:** Frontend testing setup is operational, using Jest/RTL. `msw` is configured for mocking API calls, as indicated in `frontend/src/mocks/`. `README.md` provides commands to run frontend tests.
 
--   **Write Initial Frontend Unit Tests (`frontend/src/components/.../__tests__` or `frontend/src/tests/unit`)**
-    -   [ ] **Test Key Components:**
-        *   Write tests for `PromptInput.js`: rendering, input changes, submission.
-        *   Write tests for `ModelSelector.js`: rendering options, selection changes.
-        *   Write tests for `Results.js`: rendering different states (loading, error, data), displaying multiple outputs.
-        *   Write tests for `Questionnaire.js`: rendering questions, handling answers.
-    -   [ ] **Test Utility Functions/Hooks:**
-        *   Write tests for any custom hooks or utility functions (e.g., API service call functions, state manipulation logic).
+-   **Frontend Unit/Component Tests (`frontend/src/components/.../__tests__` or `frontend/src/tests/unit`)**
+    -   **Status:** Setup complete; ongoing effort for comprehensive coverage.
+    -   **Details:** The framework for frontend tests is in place.
+    -   **Ongoing:** Continuously add tests for:
+        *   Key components (e.g., `PromptInput.js`, `ModelSelector.js`, `Results.js`, `Questionnaire.js`).
+        *   Custom hooks and utility functions.
+        *   User interactions and state changes within components.
 
 ## Integration Testing Strategy (Overall)
 
--   [ ] Plan a strategy for end-to-end integration tests (e.g., using tools like Cypress or Playwright if full browser testing is desired later, or focusing on frontend-backend API interaction tests for now).
-    *   *For current scope, focus on backend integration tests with `httpx` and frontend component tests mocking backend calls.*
+-   **Current Strategy:**
+    -   Backend: API integration tests using `pytest` and `httpx` to directly test FastAPI endpoints and their interaction with backend services.
+    -   Frontend: Component-level tests using Jest/RTL, with API interactions mocked using `msw`. This focuses on testing component behavior in isolation or in controlled integration with mocked services.
+-   **Future Considerations (Optional):**
+    -   True end-to-end (E2E) testing with tools like Cypress or Playwright could be considered if more comprehensive browser-based testing is required. This is not currently in scope.
 
-## General Testing Practices
+## General Testing Practices (Ongoing Guidelines)
 
--   [ ] Aim for good test coverage of critical application logic.
--   [ ] Ensure tests are independent and can be run in any order.
--   [ ] Add test commands to `README.md` (e.g., `cd backend && pytest`, `cd frontend && npm test`). 
+-   **Test Coverage:** Strive for good test coverage of critical application logic in both frontend and backend.
+-   **Test Independence:** Ensure tests are independent and can be run in any order without affecting each other.
+-   **Maintainability:** Write clear, concise, and maintainable tests.
+-   **`README.md` Test Commands:** Completed. Test execution commands are documented in `README.md`.

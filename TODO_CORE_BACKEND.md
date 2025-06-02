@@ -1,32 +1,29 @@
 # Core Backend TODO
 
-This file outlines tasks for the core backend features of the Prompt Builder & Optimizer application.
+**Last Updated: 2025-06-02**
 
-## User Authentication (Basic Auth)
+**Status:** All core backend tasks listed below appear to be **completed** based on the information in `README.md`. This document primarily serves as a historical reference unless new core backend tasks are identified.
 
--   [ ] Implement basic authentication middleware in FastAPI.
-    *   Define a single, hardcoded username/password initially (can be moved to `.env`).
-    *   Protect all relevant API endpoints.
--   [ ] Create a simple `User` model in `backend/models.py` (id, username) if needed for session management, or remove if basic auth is stateless.
-    *   *Note: `GUIDELINES.md` mentions a `Users` table with `id`, `username`, `email`. Re-evaluate if email is needed for basic auth in a single-user app. For now, assume simpler model.*
+## Previously Listed Tasks (Considered Completed):
 
-## Dynamic Questionnaire Logic
+### User Authentication (Basic Auth)
+-   **Task:** Implement basic authentication middleware in FastAPI, define hardcoded credentials, protect endpoints.
+    -   **Status:** Completed. `README.md` confirms "Basic Authentication: Protects application endpoints" and details the hardcoded credentials in `backend/security.py`.
+-   **Task:** Create a `User` model if needed or remove if stateless.
+    -   **Status:** Completed. Basic auth implemented is stateless, so an explicit User model for this purpose is not required.
 
--   [ ] Design an algorithm to generate 3-5 simple, context-aware questions based on the initial prompt's keywords or length.
-    *   Example: If prompt is short, ask for desired length. If prompt mentions "code", ask about programming language.
--   [ ] Implement a FastAPI endpoint (e.g., `/generate_questionnaire`) that takes an initial prompt and returns a list of questions.
--   [ ] Implement a FastAPI endpoint (e.g., `/submit_questionnaire`) to store user responses.
-    *   This will link to the `QuestionnaireResponses` table (covered in `TODO_DATABASE.md`).
+### Dynamic Questionnaire Logic
+-   **Task:** Design algorithm and implement FastAPI endpoints (`/generate_questionnaire`, `/submit_questionnaire`) for a dynamic questionnaire.
+    -   **Status:** Completed. `README.md` feature list includes "Adaptive Questionnaire: Generates 3-5 context-aware questions..." and "Prompt History & Persistence" for responses.
 
-## Prompt Optimization Engine
+### Prompt Optimization Engine
+-   **Task:** Research strategies, implement `backend/prompt_optimizer.py` module, and create a FastAPI endpoint (`/optimize_prompt`).
+    -   **Status:** Completed. `README.md` feature list includes "Prompt Optimization Engine: Refines your base prompt and questionnaire answers..."
 
--   [ ] Research and define 1-2 simple, generic optimization strategies applicable across most LLMs (e.g., adding role-playing, asking for step-by-step thinking, specifying output format).
--   [ ] Implement a Python module (`backend/prompt_optimizer.py`) with a function that takes an initial prompt, questionnaire answers, and a target model (enum/string) and returns an optimized prompt string.
--   [ ] Allow the optimization function to accept model-specific parameters in the future (placeholder for now).
--   [ ] Implement a FastAPI endpoint (e.g., `/optimize_prompt`) that uses this engine.
+### Model Recommendation Logic
+-   **Task:** Design rule-based logic and implement a FastAPI endpoint (`/recommend_models`) for model recommendations.
+    -   **Status:** Completed. `README.md` feature list includes "Model Recommendations: Suggests suitable models..."
 
-## Model Recommendation Logic
-
--   [ ] Design a simple rule-based logic to suggest 1-2 suitable models.
-    *   Example: If prompt mentions "creative writing", suggest Opus. If "quick summary", suggest Flash/Mini. If "coding", suggest Opus/Grok.
--   [ ] Implement a FastAPI endpoint (e.g., `/recommend_models`) that takes the initial prompt and questionnaire context, and returns a list of recommended model names. 
+## Future Considerations:
+- If new core backend features are planned, they should be documented here.
+- Enhancements to existing features (e.g., moving auth credentials to `.env`, more advanced optimization strategies) could be listed as new tasks if prioritized.
