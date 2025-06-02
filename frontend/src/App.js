@@ -1,68 +1,49 @@
-import React, { useState } from 'react';
-import PromptInput from './components/PromptInput';
-import ModelSelector from './components/ModelSelector';
-import Results from './components/Results';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import MainPage from './pages/MainPage'; // Import MainPage
+import HistoryView from './pages/HistoryView'; // Import HistoryView
+import HistoryDetailPage from './pages/HistoryDetailPage'; // Import HistoryDetailPage
 
 function App() {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [promptData, setPromptData] = useState({
-    basePrompt: '',
-    responses: [],
-    selectedModels: [],
-    results: []
-  });
-
-  const nextStep = () => setCurrentStep(currentStep + 1);
-  const prevStep = () => setCurrentStep(currentStep - 1);
-
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">
-          Prompt Builder & Optimizer
-        </h1>
-        
-        <div className="flex justify-center mb-8">
-          <div className="flex items-center space-x-4">
-            {[1, 2, 3].map((step) => (
-              <div key={step} className="flex items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  currentStep >= step ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'
-                }`}>
-                  {step}
-                </div>
-                {step < 3 && <div className="w-8 h-1 bg-gray-300 mx-2"></div>}
+    <Router>
+      <div className="min-h-screen bg-gray-900 text-white flex flex-col">
+        {/* Header */}
+        <header className="bg-gray-800 shadow-md">
+          <nav className="container mx-auto px-6 py-3">
+            <div className="flex items-center justify-between">
+              <Link to="/" className="text-xl font-semibold text-white hover:text-indigo-300 transition-colors">
+                PromptForge
+              </Link>
+              <div>
+                <Link to="/" className="px-3 py-2 text-gray-300 hover:text-indigo-300 transition-colors">
+                  Forge
+                </Link>
+                <Link to="/history" className="px-3 py-2 text-gray-300 hover:text-indigo-300 transition-colors">
+                  History
+                </Link>
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+          </nav>
+        </header>
 
-        {currentStep === 1 && (
-          <PromptInput 
-            promptData={promptData} 
-            setPromptData={setPromptData}
-            nextStep={nextStep}
-          />
-        )}
-        
-        {currentStep === 2 && (
-          <ModelSelector 
-            promptData={promptData} 
-            setPromptData={setPromptData}
-            nextStep={nextStep}
-            prevStep={prevStep}
-          />
-        )}
-        
-        {currentStep === 3 && (
-          <Results 
-            promptData={promptData} 
-            setPromptData={setPromptData}
-            prevStep={prevStep}
-          />
-        )}
+        {/* Main Content */}
+        <main className="flex-grow container mx-auto px-6 py-8">
+          <Routes>
+            <Route path="/" element={<MainPage />} />
+            <Route path="/history" element={<HistoryView />} />
+            <Route path="/history/:promptId" element={<HistoryDetailPage />} />
+          </Routes>
+        </main>
+
+        {/* Footer */}
+        <footer className="bg-gray-800 shadow-md mt-auto">
+          <div className="container mx-auto px-6 py-4 text-center text-gray-500 text-sm">
+            &copy; {new Date().getFullYear()} PromptForge. All rights reserved.
+          </div>
+        </footer>
       </div>
-    </div>
+    </Router>
   );
 }
 

@@ -1,70 +1,36 @@
-from pydantic import BaseModel
-from datetime import datetime
+from sqlmodel import Field, Relationship, SQLModel
 from typing import List, Optional
+from datetime import datetime
 
-class UserBase(BaseModel):
-    username: str
-    email: str
+class User(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    username: str = Field(index=True, unique=True)
 
-class UserCreate(UserBase):
-    pass
+    prompts: List["Prompt"] = Relationship(back_populates="user")
 
-class User(UserBase):
-    id: int
-    
-    class Config:
-        from_attributes = True
-
-class PromptBase(BaseModel):
+class Prompt(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id", nullable=True)
     base_prompt: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
 
-class PromptCreate(PromptBase):
-    user_id: int
+    user: Optional[User] = Relationship(back_populates="prompts")
+    questionnaire_responses: List["QuestionnaireResponse"] = Relationship(back_populates="prompt")
+    model_outputs: List["ModelOutput"] = Relationship(back_populates="prompt")
 
-class Prompt(PromptBase):
-    id: int
-    user_id: int
-    timestamp: datetime
-    
-    class Config:
-        from_attributes = True
-
-class QuestionnaireResponseBase(BaseModel):
+class QuestionnaireResponse(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    prompt_id: int = Field(foreign_key="prompt.id")
     question: str
     answer: str
 
-class QuestionnaireResponseCreate(QuestionnaireResponseBase):
-    prompt_id: int
+    prompt: Prompt = Relationship(back_populates="questionnaire_responses")
 
-class QuestionnaireResponse(QuestionnaireResponseBase):
-    id: int
-    prompt_id: int
-    
-    class Config:
-        from_attributes = True
-
-class ModelOutputBase(BaseModel):
+class ModelOutput(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    prompt_id: int = Field(foreign_key="prompt.id")
     model_name: str
-    optimized_prompt: str
     output: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
 
-class ModelOutputCreate(ModelOutputBase):
-    prompt_id: int
-
-class ModelOutput(ModelOutputBase):
-    id: int
-    prompt_id: int
-    timestamp: datetime
-    
-    class Config:
-        from_attributes = True
-
-class PromptOptimizationRequest(BaseModel):
-    base_prompt: str
-    questionnaire_responses: List[QuestionnaireResponseBase]
-    selected_models: List[str]
-
-class OptimizedPromptResponse(BaseModel):
-    model_name: str
-    optimized_prompt: str
-    output: Optional[str] = None
+    prompt: Prompt = Relationship(back_populates="model_outputs")

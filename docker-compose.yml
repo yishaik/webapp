@@ -1,0 +1,45 @@
+version: '3.8' # Specify docker-compose version
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000" # Map host port 8000 to container port 8000
+    volumes:
+      # Use a named volume for SQLite database persistence
+      # Mounts the 'prompts_db_volume' to /app/prompts.db inside the container
+      # /app is the WORKDIR in backend/Dockerfile, and prompts.db is created there.
+      - prompts_db_volume:/app/prompts.db
+    env_file:
+      - ./backend/.env # Load environment variables from .env file in backend directory
+    restart: unless-stopped
+    # platform: linux/arm64/v8 # Uncomment if building for ARM on a non-ARM machine or vice-versa
+    # healthcheck: # Optional: define a healthcheck for the backend
+    #   test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 30s # Give some time for the app to start
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80" # Map host port 3000 to container port 80 (Nginx)
+    depends_on:
+      # Optional: backend service does not need to be healthy for frontend to start serving static files
+      # But can be useful if frontend makes API calls on initial load that must succeed.
+      # For a typical SPA, this might not be strictly necessary for startup.
+      # backend:
+      #   condition: service_healthy # Requires healthcheck in backend service
+      - backend # Simple dependency, ensures backend is started first, not necessarily healthy
+    restart: unless-stopped
+    # platform: linux/arm64/v8 # Uncomment if needed
+
+volumes:
+  # Define the named volume for database persistence
+  prompts_db_volume:
+    driver: local # Default driver, stores data on the host Docker manages.
