@@ -20,7 +20,7 @@ const PromptInput = ({ onSubmit, isLoading }) => {
             onChange={(e) => setBasePrompt(e.target.value)}
             className="w-full px-4 py-3 border border-gray-700 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-150"
             rows="6"
-            placeholder="e.g., Explain quantum computing in simple terms..."
+            placeholder="Enter your main idea or question here..."
             required
             disabled={isLoading}
           />

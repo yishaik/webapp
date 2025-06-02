@@ -47,7 +47,9 @@ const ModelSelector = ({ onSelectModels, isLoading, recommendedModels = [] }) =>
   return (
     <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-3xl mx-auto mt-8">
       <h2 className="text-2xl font-semibold mb-2 text-white">Select Models</h2>
-      <p className="text-sm text-gray-400 mb-6">Choose which models you'd like to get responses from.</p>
+      <p className="text-sm text-gray-400 mb-6">
+        Choose one or more AI models to process your refined prompt. Different models have different strengths, so feel free to select multiple to compare their outputs.
+      </p>
       
       <form onSubmit={handleSubmit}>
         <div className="space-y-6 mb-6">
@@ -71,7 +73,7 @@ const ModelSelector = ({ onSelectModels, isLoading, recommendedModels = [] }) =>
                     />
                     <span className={`text-sm font-medium ${selectedModels.includes(model.id) ? 'text-white' : 'text-gray-200'}`}>
                       {model.name}
-                      {recommendedModels.includes(model.name) && <span className="text-xs text-green-400 ml-2">(Recommended)</span>}
+                      {recommendedModels.includes(model.name) && <span className="text-xs font-semibold text-green-300 ml-2">(Recommended)</span>}
                     </span>
                   </label>
                 ))}

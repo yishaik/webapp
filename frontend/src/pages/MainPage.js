@@ -118,6 +118,15 @@ const MainPage = () => {
 
   return (
     <div className="space-y-12">
+      <div className="prose lg:prose-xl mx-auto p-6 bg-white shadow-md rounded-lg">
+        <h2 className="text-2xl font-semibold mb-4 text-gray-700">Welcome! Here's how this works:</h2>
+        <ol className="list-decimal list-inside space-y-2 text-gray-600">
+          <li><strong>Input a base prompt:</strong> Start by providing your initial idea or question.</li>
+          <li><strong>Answer clarifying questions:</strong> The system will ask you a few questions to better understand your needs and refine the prompt.</li>
+          <li><strong>Select AI models:</strong> Choose one or more AI models to generate responses.</li>
+          <li><strong>Compare responses:</strong> View and compare the outputs from the selected models to find the best one.</li>
+        </ol>
+      </div>
       {error && (
         <div className="bg-red-800 border border-red-600 text-white p-4 rounded-md shadow-lg">
           <p className="font-semibold">An error occurred:</p>
