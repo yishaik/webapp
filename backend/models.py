@@ -1,42 +1,79 @@
 from datetime import datetime
 from typing import List, Optional
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+from pydantic import BaseModel
 
-from sqlmodel import Field, Relationship, SQLModel
+Base = declarative_base()
 
+class User(Base):
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    
+    prompts = relationship("Prompt", back_populates="user")
 
-class User(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True, index=True)
-    username: str = Field(unique=True, index=True)
+class Prompt(Base):
+    __tablename__ = "prompts"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    base_prompt = Column(Text)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User", back_populates="prompts")
+    questionnaire_responses = relationship("QuestionnaireResponse", back_populates="prompt")
+    model_outputs = relationship("ModelOutput", back_populates="prompt")
 
-    prompts: List["Prompt"] = Relationship(back_populates="user")
+class QuestionnaireResponse(Base):
+    __tablename__ = "questionnaire_responses"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    prompt_id = Column(Integer, ForeignKey("prompts.id"), index=True)
+    question = Column(Text)
+    answer = Column(Text)
+    
+    prompt = relationship("Prompt", back_populates="questionnaire_responses")
 
+class ModelOutput(Base):
+    __tablename__ = "model_outputs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    prompt_id = Column(Integer, ForeignKey("prompts.id"), index=True)
+    model_name = Column(String)
+    output = Column(Text)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    
+    prompt = relationship("Prompt", back_populates="model_outputs")
 
-class Prompt(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True, index=True)
-    user_id: Optional[int] = Field(default=None, foreign_key="user.id", nullable=True, index=True)
-    base_prompt: str = Field(sa_column_kwargs={"type": "Text"}) # Using Text for potentially long prompts
-    timestamp: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"default": datetime.utcnow})
+# Pydantic models for API responses
+class UserResponse(BaseModel):
+    id: int
+    username: str
 
-    user: Optional[User] = Relationship(back_populates="prompts")
-    questionnaire_responses: List["QuestionnaireResponse"] = Relationship(back_populates="prompt")
-    model_outputs: List["ModelOutput"] = Relationship(back_populates="prompt")
+    class Config:
+        from_attributes = True
 
+class PromptBase(BaseModel):
+    base_prompt: str
 
-class QuestionnaireResponse(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True, index=True)
-    prompt_id: int = Field(foreign_key="prompt.id", index=True)
-    question: str = Field(sa_column_kwargs={"type": "Text"})
-    answer: str = Field(sa_column_kwargs={"type": "Text"})
+class PromptCreate(PromptBase):
+    user_id: Optional[int] = None
 
-    prompt: "Prompt" = Relationship(back_populates="questionnaire_responses")
+class PromptResponse(PromptBase):
+    id: int
+    user_id: Optional[int]
+    timestamp: datetime
 
+    class Config:
+        from_attributes = True
 
-class ModelOutput(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True, index=True)
-    prompt_id: int = Field(foreign_key="prompt.id", index=True)
-    model_name: str
-    # optimized_prompt: str = Field(sa_column_kwargs={"type": "Text"}) # This field was in the old pydantic model but not in the new requirements
-    output: str = Field(sa_column_kwargs={"type": "Text"})
-    timestamp: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"default": datetime.utcnow})
+class QuestionnaireSubmission(BaseModel):
+    prompt: str
+    answers: List[str]
 
-    prompt: "Prompt" = Relationship(back_populates="model_outputs")
+class RecommendModelsRequest(BaseModel):
+    initial_prompt: str
+    questionnaire_answers: List[str]

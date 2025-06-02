@@ -1,104 +1,95 @@
-from fastapi import FastAPI, Depends, HTTPException, APIRouter
-from typing import List, Optional
-
-from sqlmodel import Session
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from sqlalchemy.orm import Session
+import secrets
+import os
+from dotenv import load_dotenv
+from typing import List
+import uvicorn
 
-from backend import crud, models, schemas
-from backend.database import get_session, create_db_and_tables # SQLModel setup
+from database import get_db, create_tables
+from models import *
+from questionnaire import generate_questions
+from prompt_optimizer import optimize_prompt
+from model_recommender import recommend_models
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Create FastAPI app
-app = FastAPI(title="Prompt Interaction History API", version="1.0.0")
+app = FastAPI(title="Prompt Builder and Optimizer API", version="1.0.0")
 
-# Add CORS middleware (important for frontend integration)
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Allows all origins for simplicity, adjust for production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Routers
-history_router = APIRouter(prefix="/history", tags=["History"])
-interaction_router = APIRouter(tags=["Interactions"])
+# Basic Authentication
+security = HTTPBasic()
+
+def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = secrets.compare_digest(credentials.username, os.environ.get("BASIC_AUTH_USERNAME", "admin"))
+    correct_password = secrets.compare_digest(credentials.password, os.environ.get("BASIC_AUTH_PASSWORD", "password"))
+    if not (correct_username and correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
+
+# In-memory storage for questionnaire submissions (temporary)
+questionnaire_submissions_db = []
 
 @app.on_event("startup")
-def on_startup():
-    create_db_and_tables() # Creates tables based on SQLModel definitions
-
-# History Endpoints
-@history_router.get("/prompts", response_model=List[schemas.PromptRead])
-def list_all_prompts(
-    skip: int = 0, limit: int = 100, db: Session = Depends(get_session)
-):
-    prompts = crud.get_all_prompts(db=db, skip=skip, limit=limit)
-    return prompts
-
-@history_router.get("/prompt/{prompt_id}", response_model=schemas.PromptRead)
-def get_full_prompt_details(prompt_id: int, db: Session = Depends(get_session)):
-    db_prompt = crud.get_prompt(db=db, prompt_id=prompt_id)
-    if db_prompt is None:
-        raise HTTPException(status_code=404, detail="Prompt not found")
-    return db_prompt
-
-# Interaction Endpoints
-@interaction_router.post("/questionnaires/submit", response_model=schemas.PromptRead)
-def submit_questionnaire_and_create_prompt(
-    request_data: schemas.SubmitQuestionnaireRequest, db: Session = Depends(get_session)
-):
-    prompt_create_data = schemas.PromptCreate(
-        base_prompt=request_data.base_prompt,
-        user_id=request_data.user_id
-    )
-    created_prompt = crud.create_prompt(db=db, prompt_in=prompt_create_data)
-
-    qr_create_list: List[schemas.QuestionnaireResponseCreate] = []
-    for resp_data in request_data.responses:
-        qr_create_list.append(schemas.QuestionnaireResponseCreate(
-            question=resp_data.question,
-            answer=resp_data.answer,
-            prompt_id=created_prompt.id
-        ))
-
-    # The prompt_id_override in create_multiple_questionnaire_responses ensures all responses
-    # are linked to the created_prompt.id, even if individual items in qr_create_list had a (wrong) one.
-    crud.create_multiple_questionnaire_responses(
-        db=db, responses_in=qr_create_list, prompt_id_override=created_prompt.id
-    )
-
-    db.refresh(created_prompt)
-    # At this point, created_prompt.questionnaire_responses should be populated
-    # if the relationship in models.Prompt is correctly set up and the session is active.
-    # Pydantic's from_attributes=True in PromptRead will handle serialization.
-    return created_prompt
-
-@interaction_router.post("/prompts/{prompt_id}/model_outputs", response_model=schemas.ModelOutputRead)
-def record_model_output_for_prompt(
-    prompt_id: int,
-    output_data: schemas.ModelOutputCreateNoPromptId,
-    db: Session = Depends(get_session)
-):
-    db_prompt = crud.get_prompt(db=db, prompt_id=prompt_id)
-    if db_prompt is None:
-        raise HTTPException(status_code=404, detail="Prompt not found, cannot record model output.")
-
-    model_output_create_data = schemas.ModelOutputCreate(
-        model_name=output_data.model_name,
-        output=output_data.output,
-        prompt_id=prompt_id
-    )
-    created_output = crud.create_model_output(db=db, output_in=model_output_create_data)
-    return created_output
-
-# Include routers
-app.include_router(history_router)
-app.include_router(interaction_router)
+def startup_event():
+    create_tables()
 
 @app.get("/")
 async def root():
-    return {"message": "Prompt Interaction History API is running. See /docs for API documentation."}
+    return {"message": "Prompt Builder and Optimizer API is running"}
+
+@app.post("/create_prompt/", response_model=PromptResponse)
+async def create_prompt(prompt: PromptCreate, db: Session = Depends(get_db), username: str = Depends(get_current_username)):
+    from database import Prompt as DBPrompt
+    db_prompt = DBPrompt(base_prompt=prompt.base_prompt, user_id=prompt.user_id)
+    db.add(db_prompt)
+    db.commit()
+    db.refresh(db_prompt)
+    return db_prompt
+
+@app.get("/prompts/", response_model=List[PromptResponse])
+async def get_prompts(db: Session = Depends(get_db), username: str = Depends(get_current_username)):
+    from database import Prompt as DBPrompt
+    return db.query(DBPrompt).all()
+
+@app.post("/generate_questionnaire")
+async def post_generate_questionnaire(request_data: PromptBase, username: str = Depends(get_current_username)):
+    questions = generate_questions(request_data.base_prompt)
+    return {"questions": questions}
+
+@app.post("/submit_questionnaire")
+async def post_submit_questionnaire(submission: QuestionnaireSubmission, username: str = Depends(get_current_username)):
+    questionnaire_submissions_db.append(submission.dict())
+    return {"status": "success", "message": "Questionnaire submitted successfully"}
+
+@app.post("/optimize_prompt")
+async def post_optimize_prompt(request_data: PromptBase, username: str = Depends(get_current_username)):
+    optimized = optimize_prompt(request_data.base_prompt)
+    return {"optimized_prompt": optimized}
+
+@app.post("/recommend_models")
+async def post_recommend_models(request_data: RecommendModelsRequest, username: str = Depends(get_current_username)):
+    recommended_model_ids = recommend_models(
+        initial_prompt=request_data.initial_prompt,
+        questionnaire_answers=request_data.questionnaire_answers
+    )
+    return {"recommended_models": recommended_model_ids}
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True) # Added reload for development
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
