@@ -18,4 +18,5 @@ Prompt Builder and Optimizer webapp for Raspberry Pi - single user local network
 - Always commit to GitHub with each iteration
 - Update both CLAUDE.md and README.md files
 - Follow guidelines in GUIDELINES.md
+- Follow security guidelines in SECURITY.md
 - Single user application for local network
