@@ -7,7 +7,7 @@ def generate_questions(base_prompt: str) -> List[str]:
     prompt_lower = base_prompt.lower()
 
     # Strategy 1: Length-based question
-    if len(base_prompt.split()) < 10: # Arbitrary short length
+    if len(base_prompt.split()) < 10:  # Arbitrary short length
         questions.append("The prompt is quite short. Could you specify the desired length or verbosity of the response?")
 
     # Strategy 2: Keyword "code" or language names
@@ -26,24 +26,21 @@ def generate_questions(base_prompt: str) -> List[str]:
     if any(keyword in prompt_lower for keyword in comparison_keywords):
         questions.append("What are the key aspects or criteria you want to focus on for the comparison/contrast?")
 
-    # Strategy 5: Generic fallback questions if not too many specific ones already
-    if len(questions) < 2: # Add generic if we don't have many questions yet
+    # Strategy 5: Content type specific questions
+    if "email" in prompt_lower:
+        questions.append("What is the purpose of this email (e.g., inquiry, marketing, follow-up)?")
+    if "story" in prompt_lower or "narrative" in prompt_lower:
+        questions.append("What is the main genre of the story (e.g., fantasy, sci-fi, romance)?")
+    if "marketing" in prompt_lower or "advertisement" in prompt_lower:
+        questions.append("What is the product or service being marketed?")
+
+    # Strategy 6: Generic fallback questions if not too many specific ones already
+    if len(questions) < 2:  # Add generic if we don't have many questions yet
         questions.append("Are there any specific constraints or requirements for the output (e.g., tone, style, format)?")
 
-    if not questions: # Ensure at least one question is always asked
-         questions.append("What is the primary goal or objective of this prompt?")
-         questions.append("Is there a specific format or structure you expect for the response?")
+    if not questions:  # Ensure at least one question is always asked
+        questions.append("What is the primary goal or objective of this prompt?")
+        questions.append("Is there a specific format or structure you expect for the response?")
 
-
-    # Limit to 3-5 questions as per requirement (though current logic might generate more or less)
-    # We can refine this by prioritizing or selecting from generated questions if too many.
-    # For now, let's take the first few if more than 5.
+    # Limit to 3-5 questions as per requirement
     return questions[:5]
-
-# Example usage:
-# test_prompt = "Explain the difference between Python and JavaScript for web development."
-# print(generate_questions(test_prompt))
-# test_prompt_2 = "Write a short story."
-# print(generate_questions(test_prompt_2))
-# test_prompt_3 = "code a function to sort a list"
-# print(generate_questions(test_prompt_3))

@@ -1,5 +1,5 @@
 from typing import List
-from . import schemas # Assuming schemas.py contains QuestionnaireResponseRead
+import schemas
 
 def optimize_prompt(
     base_prompt: str,
@@ -12,7 +12,6 @@ def optimize_prompt(
     optimized_prompt = base_prompt
 
     # Incorporate insights from questionnaire answers
-    # This is a simplified example; more sophisticated NLP could be used here.
     for qa in questionnaire_answers:
         # Example: If a question was about length, and answer specified it.
         if "length" in qa.question.lower() and qa.answer:
@@ -23,15 +22,15 @@ def optimize_prompt(
         # Example: If question was about programming language
         elif "programming language" in qa.question.lower() and qa.answer and qa.answer.lower() not in ["any", "none", "n/a", "not specific"]:
              optimized_prompt += f"\nThe preferred programming language is {qa.answer}."
+        # Example: If question was about tone/style
+        elif "tone" in qa.question.lower() or "style" in qa.question.lower() and qa.answer:
+            optimized_prompt += f"\nUse a {qa.answer} tone/style."
         # Generic: add other answers as context if not directly actionable as a specific instruction
         elif qa.answer and qa.answer.lower() not in ["none", "n/a", "not sure"]:
              optimized_prompt += f"\nConsider also: {qa.question} - {qa.answer}."
 
-
     # Apply generic optimization strategies
     # Strategy 1: Role-playing (simple version)
-    # More advanced: could try to infer domain from prompt/answers.
-    # For now, a generic expert role if not otherwise specified by user.
     if "act as" not in base_prompt.lower():
         # Check if any answer already implies a role
         role_implied = any("role of" in qa.answer.lower() or "act as" in qa.answer.lower() for qa in questionnaire_answers)
@@ -46,30 +45,25 @@ def optimize_prompt(
     if "clear and concise" not in base_prompt.lower():
         optimized_prompt += "\nEnsure your response is clear, concise, and directly addresses the query."
 
-    # Placeholder for target_model specific optimizations - not used yet
-    # if target_model == "some_specific_model":
-    #    optimized_prompt += "\n[Specific instruction for some_specific_model]"
+    # Placeholder for target_model specific optimizations
+    if "gpt-4" in target_model.lower():
+        optimized_prompt += "\nLeverage advanced reasoning capabilities."
+    elif "claude" in target_model.lower():
+        optimized_prompt += "\nBe thorough and analytical in your response."
 
     return optimized_prompt.strip()
 
-# Example usage:
-# if __name__ == "__main__":
-#     class QARead(schemas.SQLModel): # Mock for testing
-#         question: str
-#         answer: str
-#
-#     sample_base_prompt = "Explain photosynthesis."
-#     sample_answers = [
-#         QARead(question="What is the target audience for this explanation (e.g., beginner, intermediate, expert)?", answer="beginner"),
-#         QARead(question="Are there any specific constraints or requirements for the output (e.g., tone, style, format)?", answer="casual tone")
-#     ]
-#     optimized = optimize_prompt(sample_base_prompt, sample_answers, "gpt-4")
-#     print(optimized)
-#
-#     sample_base_prompt_2 = "Write Python code to sort a list of numbers."
-#     sample_answers_2 = [
-#        QARead(question="What programming language are you focusing on for the code generation (if any specific)?", answer="Python"),
-#        QARead(question="Are there any specific libraries or frameworks to be used or avoided?", answer="No specific libraries"),
-#     ]
-#     optimized_2 = optimize_prompt(sample_base_prompt_2, sample_answers_2, "gpt-4")
-#     print(optimized_2)
+
+# Compatibility function for backward compatibility with master branch signature
+def optimize_prompt_legacy(initial_prompt: str, questionnaire_answers: List[str], target_model: str) -> str:
+    """Legacy function signature for backward compatibility"""
+    # Convert string answers to QuestionnaireResponseRead objects
+    qa_objects = []
+    for i, answer in enumerate(questionnaire_answers):
+        qa_objects.append(schemas.QuestionnaireResponseRead(
+            id=i,
+            prompt_id=0,
+            question=f"Question {i+1}",
+            answer=answer
+        ))
+    return optimize_prompt(initial_prompt, qa_objects, target_model)

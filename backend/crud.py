@@ -1,8 +1,8 @@
 from sqlmodel import Session, select
 from typing import List, Optional
 
-from . import models
-from . import schemas
+import models
+import schemas
 
 # User CRUD operations
 def create_user(db: Session, user: schemas.UserCreate) -> models.User:
@@ -28,15 +28,7 @@ def create_prompt(db: Session, prompt: schemas.PromptCreate, user_id: Optional[i
     return db_prompt
 
 def get_prompt(db: Session, prompt_id: int) -> Optional[models.Prompt]:
-    # Fetch prompt with relationships
-    statement = select(models.Prompt).where(models.Prompt.id == prompt_id)
-    # SQLModel automatically handles loading relationships if they are accessed and session is active
-    # For more explicit loading or to avoid N+1, options like selectinload can be used with underlying SQLAlchemy select if needed,
-    # but for simple cases, direct access after fetching the main object often works.
-    # For this get_prompt, we might want all details, so accessing relationships later is fine.
-    # If we need to ensure they are loaded for PromptReadWithDetails, this is handled by Pydantic's serialization.
     return db.get(models.Prompt, prompt_id)
-
 
 def get_prompts(db: Session, skip: int = 0, limit: int = 100) -> List[models.Prompt]:
     statement = select(models.Prompt).offset(skip).limit(limit)
@@ -61,7 +53,7 @@ def create_multiple_questionnaire_responses(db: Session, responses: List[schemas
         db.add(db_response)
         db_responses.append(db_response)
     db.commit()
-    for db_response in db_responses: # Refresh each instance
+    for db_response in db_responses:
         db.refresh(db_response)
     return db_responses
 

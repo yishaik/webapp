@@ -1,10 +1,10 @@
 from sqlmodel import create_engine, SQLModel, Session
 
-SQLITE_DATABASE_URL = "sqlite:///./prompts.db"
+DATABASE_URL = "sqlite:///./prompts.db"
 
 # The connect_args={"check_same_thread": False} is needed only for SQLite.
 # It's not needed for other databases.
-engine = create_engine(SQLITE_DATABASE_URL, echo=True, connect_args={"check_same_thread": False})
+engine = create_engine(DATABASE_URL, echo=True, connect_args={"check_same_thread": False})
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
