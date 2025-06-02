@@ -7,7 +7,7 @@ const Results = ({ modelResults, optimizedPrompt }) => {
 
   return (
     <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-4xl mx-auto mt-8">
-      <h2 className="text-2xl font-semibold mb-6 text-white">Model Responses</h2>
+      <h2 className="text-2xl font-semibold mb-6 text-white">Responses from Selected Models</h2>
 
       {optimizedPrompt && (
         <div className="mb-6 p-4 bg-gray-700 rounded-lg">
