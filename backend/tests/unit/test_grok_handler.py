@@ -3,23 +3,21 @@ from unittest.mock import patch, MagicMock
 from backend.api_handlers import grok_handler # Uses openai library
 from backend.config import XAI_API_KEY # To check if it's mocked
 
-@pytest.fixture(autouse=True)
-def patch_grok_client():
-    if grok_handler.client is not None:
-        mock_client = MagicMock(spec=grok_handler.openai.OpenAI)
-        mock_client.chat.completions.create = MagicMock()
-        with patch.object(grok_handler, 'client', mock_client):
-            yield mock_client
-    else:
-        mock_client_for_none_case = MagicMock(spec=grok_handler.openai.OpenAI)
-        mock_client_for_none_case.chat.completions.create = MagicMock()
-        with patch.object(grok_handler, 'client', mock_client_for_none_case):
-            yield mock_client_for_none_case
+@pytest.fixture # Changed from autouse=True to be explicit in tests, or keep autouse if preferred
+def mock_grok_client_fixture():
+    mock_client = MagicMock(spec=grok_handler.openai.OpenAI)
+    mock_client.chat = MagicMock()  # Ensure .chat is a MagicMock
+    mock_client.chat.completions = MagicMock() # Ensure .chat.completions is a MagicMock
+    mock_client.chat.completions.create = MagicMock() # Now .create can be set
+
+    with patch.object(grok_handler, 'client', mock_client) as patched_client:
+        yield patched_client
 
 
-def test_get_llm_response_success(patch_grok_client):
-    if not patch_grok_client:
-        pytest.skip("Grok client was None, skipping test that requires a client.")
+def test_get_llm_response_success(mock_grok_client_fixture): # Use the fixture
+    mock_client = mock_grok_client_fixture
+    if not mock_client: # Should always be a mock now
+        pytest.skip("Grok client mock not available, skipping.")
 
     mock_response_content = "Test Grok response"
     mock_completion = MagicMock()
@@ -27,39 +25,41 @@ def test_get_llm_response_success(patch_grok_client):
     mock_completion.choices[0].message = MagicMock()
     mock_completion.choices[0].message.content = mock_response_content
 
-    patch_grok_client.chat.completions.create.return_value = mock_completion
+    mock_client.chat.completions.create.return_value = mock_completion
 
     prompt = "Test prompt for Grok"
     model_name = "grok-3-mini"
     response = grok_handler.get_llm_response(prompt, model_name)
 
-    patch_grok_client.chat.completions.create.assert_called_once_with(
+    mock_client.chat.completions.create.assert_called_once_with(
         model=model_name,
         messages=[{"role": "user", "content": prompt}]
     )
     assert response == mock_response_content
 
-def test_get_llm_response_empty_prompt(patch_grok_client):
+def test_get_llm_response_empty_prompt(mock_grok_client_fixture): # Use fixture
     response = grok_handler.get_llm_response("", "grok-3-mini")
     assert "Error: Prompt cannot be empty." in response
-    if patch_grok_client:
-        patch_grok_client.chat.completions.create.assert_not_called()
+    if mock_grok_client_fixture: # mock_client from fixture
+        mock_grok_client_fixture.chat.completions.create.assert_not_called()
 
-def test_get_llm_response_api_error(patch_grok_client):
-    if not patch_grok_client:
-        pytest.skip("Grok client was None, skipping test that requires a client.")
+def test_get_llm_response_api_error(mock_grok_client_fixture): # Use fixture
+    mock_client = mock_grok_client_fixture
+    if not mock_client:
+        pytest.skip("Grok client mock not available.")
 
-    patch_grok_client.chat.completions.create.side_effect = grok_handler.openai.APIConnectionError(request=MagicMock())
+    mock_client.chat.completions.create.side_effect = grok_handler.openai.APIConnectionError(request=MagicMock())
     prompt = "Test prompt for API error"
     model_name = "grok-3-mini"
     response = grok_handler.get_llm_response(prompt, model_name)
     assert "Error: Could not connect to xAI Grok API." in response # Error message is specific
 
-def test_get_llm_response_authentication_error(patch_grok_client):
-    if not patch_grok_client:
-        pytest.skip("Grok client was None, skipping test that requires a client.")
+def test_get_llm_response_authentication_error(mock_grok_client_fixture): # Use fixture
+    mock_client = mock_grok_client_fixture
+    if not mock_client:
+        pytest.skip("Grok client mock not available.")
 
-    patch_grok_client.chat.completions.create.side_effect = grok_handler.openai.AuthenticationError(message="Auth error", response=MagicMock(), body=None)
+    mock_client.chat.completions.create.side_effect = grok_handler.openai.AuthenticationError(message="Auth error", response=MagicMock(), body=None)
     prompt = "Test prompt for auth error"
     model_name = "grok-3"
     response = grok_handler.get_llm_response(prompt, model_name)
@@ -74,14 +74,15 @@ def test_get_llm_response_client_is_none():
 def test_api_key_is_mocked_for_grok():
     assert XAI_API_KEY == "test_xai_key" or XAI_API_KEY is None
 
-def test_get_llm_response_no_choices(patch_grok_client):
-    if not patch_grok_client:
-        pytest.skip("Grok client was None, skipping test that requires a client.")
+def test_get_llm_response_no_choices(mock_grok_client_fixture): # Use fixture
+    mock_client = mock_grok_client_fixture
+    if not mock_client:
+        pytest.skip("Grok client mock not available.")
 
     mock_completion = MagicMock()
     mock_completion.choices = [] # No choices
 
-    patch_grok_client.chat.completions.create.return_value = mock_completion
+    mock_client.chat.completions.create.return_value = mock_completion
 
     prompt = "Test prompt for no choices"
     model_name = "grok-3-mini"

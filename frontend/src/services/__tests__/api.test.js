@@ -35,18 +35,38 @@ describe('API Service', () => {
 
   // Test recommendModels
   it('recommendModels successfully fetches recommendations', async () => {
-    const promptId = 123;
-    const data = await api.recommendModels(promptId);
+    const basePrompt = "test prompt for recommendations";
+    const responses = [{ question: "Q1", answer: "A1" }];
+    // MSW handler for /recommend_models was updated to expect base_prompt and questionnaire_responses
+    const data = await api.recommendModels(basePrompt, responses);
     expect(data.models).toEqual(['GPT-4.1 (Mock)', 'Claude Sonnet 4 (Mock)']);
+  });
+
+  // Test optimizePrompt
+  it('optimizePrompt successfully posts data and gets optimized prompt', async () => {
+    const basePrompt = "my base prompt to optimize";
+    const responses = [{ question: "Q1", answer: "A1" }];
+    const targetModel = "gpt-4.1";
+    const data = await api.optimizePrompt(basePrompt, responses, targetModel);
+    expect(data.optimized_prompt).toContain("Optimized: " + basePrompt);
+    expect(data.optimized_prompt).toContain(targetModel);
+  });
+
+  it('optimizePrompt handles server error', async () => {
+    server.use(
+      http.post('http://localhost:8000/optimize_prompt', () => {
+        return HttpResponse.json({ detail: 'Internal server error for optimize' }, { status: 500 });
+      })
+    );
+    await expect(api.optimizePrompt("any prompt", [], "any model")).rejects.toThrow();
   });
 
   // Test getModelResponse
   it('getModelResponse successfully fetches model output', async () => {
-    const promptId = 123;
-    const modelName = "TestModel";
-    const data = await api.getModelResponse(promptId, modelName);
-    expect(data.prompt_id).toBe(promptId);
-    expect(data.model_name).toBe(modelName);
+    const payload = { prompt_id: 123, model_name: "TestModel" };
+    const data = await api.getModelResponse(payload);
+    expect(data.prompt_id).toBe(payload.prompt_id);
+    expect(data.model_name).toBe(payload.model_name);
     expect(data.output).toContain("Mocked response from TestModel");
   });
 

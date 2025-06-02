@@ -3,7 +3,7 @@ import schemas
 
 def recommend_models(
     base_prompt: str,
-    questionnaire_answers: List[schemas.QuestionnaireResponseRead]
+    questionnaire_answers: List[schemas.QuestionnaireResponseCreate] # Changed type here
 ) -> List[str]:
     """
     Recommends models based on keywords in the base prompt.
@@ -13,7 +13,10 @@ def recommend_models(
     prompt_lower = base_prompt.lower()
     
     # Combine questionnaire answers into text for analysis
-    answers_text = " ".join([qa.answer.lower() for qa in questionnaire_answers if qa.answer])
+    # Ensure questionnaire_answers is not None before iterating
+    answers_text = ""
+    if questionnaire_answers:
+        answers_text = " ".join([qa.answer.lower() for qa in questionnaire_answers if qa.answer])
 
     # Rule 1: Creative writing
     creative_keywords = ["creative writing", "story", "poem", "write a novel", "screenplay", "creative", "narrative"]
@@ -81,11 +84,13 @@ def recommend_models_legacy(initial_prompt: str, questionnaire_answers: List[str
     """Legacy function signature for backward compatibility"""
     # Convert string answers to QuestionnaireResponseRead objects
     qa_objects = []
-    for i, answer in enumerate(questionnaire_answers):
-        qa_objects.append(schemas.QuestionnaireResponseRead(
-            id=i,
-            prompt_id=0,
-            question=f"Question {i+1}",
+    for i, answer in enumerate(questionnaire_answers): # This function might need adjustment or removal if not used
+        # This conversion is problematic as QuestionnaireResponseCreate doesn't have id/prompt_id
+        # For now, assuming this legacy function will be updated or removed separately
+        # as the main recommend_models function is now aligned with QuestionnaireResponseCreate
+        qa_objects.append(schemas.QuestionnaireResponseCreate(
+            question=f"Question {i+1}", # Simplified
             answer=answer
         ))
+    # The recursive call here is to the updated recommend_models, which now expects List[QuestionnaireResponseCreate]
     return recommend_models(initial_prompt, qa_objects)

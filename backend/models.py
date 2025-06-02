@@ -8,6 +8,8 @@ class User(SQLModel, table=True):
 
     prompts: List["Prompt"] = Relationship(back_populates="user")
 
+    __table_args__ = {"extend_existing": True}
+
 class Prompt(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: Optional[int] = Field(default=None, foreign_key="user.id", nullable=True)
@@ -18,6 +20,8 @@ class Prompt(SQLModel, table=True):
     questionnaire_responses: List["QuestionnaireResponse"] = Relationship(back_populates="prompt")
     model_outputs: List["ModelOutput"] = Relationship(back_populates="prompt")
 
+    __table_args__ = {"extend_existing": True}
+
 class QuestionnaireResponse(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     prompt_id: int = Field(foreign_key="prompt.id")
@@ -25,6 +29,8 @@ class QuestionnaireResponse(SQLModel, table=True):
     answer: str
 
     prompt: Prompt = Relationship(back_populates="questionnaire_responses")
+
+    __table_args__ = {"extend_existing": True}
 
 class ModelOutput(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -34,3 +40,5 @@ class ModelOutput(SQLModel, table=True):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
     prompt: Prompt = Relationship(back_populates="model_outputs")
+
+    __table_args__ = {"extend_existing": True}

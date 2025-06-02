@@ -31,11 +31,24 @@ export const handlers = [
   // Handler for recommending models
   http.post(`${API_BASE_URL}/recommend_models`, async ({ request }) => {
     const reqBody = await request.json();
-    if (reqBody.prompt_id === 999) { // Simulate error for a specific prompt ID
+    // Example: simulate error if base_prompt is specific
+    if (reqBody.base_prompt === 'error_recommend') {
         return HttpResponse.json({ detail: 'Failed to recommend models (mocked error)' }, { status: 500 });
     }
+    // questionnaire_responses are also available in reqBody.questionnaire_responses if needed
     return HttpResponse.json({
       models: ['GPT-4.1 (Mock)', 'Claude Sonnet 4 (Mock)'],
+    });
+  }),
+
+  // Handler for optimizing prompt
+  http.post(`${API_BASE_URL}/optimize_prompt`, async ({ request }) => {
+    const reqBody = await request.json();
+    if (reqBody.base_prompt === 'error_optimize') {
+      return HttpResponse.json({ detail: 'Failed to optimize prompt (mocked error)' }, { status: 500 });
+    }
+    return HttpResponse.json({
+      optimized_prompt: `Optimized: ${reqBody.base_prompt} for ${reqBody.target_model || 'any model'} with answers: ${(reqBody.questionnaire_responses || []).length}`,
     });
   }),
 

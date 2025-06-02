@@ -53,7 +53,8 @@ const MainPage = () => {
       const promptData = await api.submitQuestionnaire(basePrompt, answers);
       setCurrentPromptId(promptData.id);
       // After submitting questionnaire, get model recommendations
-      await fetchRecommendations(promptData.id);
+      // Pass basePrompt and answers to fetchRecommendations
+      await fetchRecommendations(basePrompt, answers);
       setCurrentStep(3);
     } catch (err) {
       setError('Failed to submit questionnaire. Please try again. Details: ' + (err.response?.data?.detail || err.message));
@@ -62,10 +63,12 @@ const MainPage = () => {
     }
   };
 
-  const fetchRecommendations = async (promptId) => {
+  // Modified to accept basePrompt and answers directly
+  const fetchRecommendations = async (currentBasePrompt, currentAnswers) => {
     setIsRecommendingModels(true);
     try {
-      const data = await api.recommendModels(promptId);
+      // api.recommendModels now expects (basePrompt, responses)
+      const data = await api.recommendModels(currentBasePrompt, currentAnswers);
       setRecommendedModels(data.models || []);
     } catch (err) {
       // Non-critical error, so don't block UI, just log or show minor warning
@@ -96,7 +99,16 @@ const MainPage = () => {
 
     for (const modelFriendlyName of selectedModelFriendlyNames) {
       try {
-        const response = await api.getModelResponse(currentPromptId, modelFriendlyName);
+        // Updated payload for api.getModelResponse
+        const payload = {
+          prompt_id: currentPromptId,
+          model_name: modelFriendlyName,
+          // base_prompt and questionnaire_responses are optional if prompt_id is present,
+          // as backend can re-fetch/re-optimize.
+          // Not sending them simplifies frontend if prompt_id is the primary reference.
+        };
+        const response = await api.getModelResponse(payload);
+
         if (response.optimized_prompt_used && !firstSuccessfulOptimizedPrompt) {
             firstSuccessfulOptimizedPrompt = response.optimized_prompt_used;
             setOptimizedPromptForResults(firstSuccessfulOptimizedPrompt);

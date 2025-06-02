@@ -1,69 +1,116 @@
-from typing import List
-import schemas
+from typing import List, Optional
+import schemas # Assuming schemas.py contains QuestionnaireResponseCreate
 
 def optimize_prompt(
     base_prompt: str,
-    questionnaire_answers: List[schemas.QuestionnaireResponseRead],
-    target_model: str  # Placeholder for now
+    questionnaire_answers: Optional[List[schemas.QuestionnaireResponseCreate]],
+    target_model: Optional[str] = None
 ) -> str:
     """
     Optimizes a base prompt using questionnaire answers and generic strategies.
     """
-    optimized_prompt = base_prompt
+    optimized_prompt_parts = [base_prompt]
+    role_set = False
 
-    # Incorporate insights from questionnaire answers
-    for qa in questionnaire_answers:
-        # Example: If a question was about length, and answer specified it.
-        if "length" in qa.question.lower() and qa.answer:
-            optimized_prompt += f"\nEnsure the response has a length of approximately: {qa.answer}."
-        # Example: If a question was about target audience.
-        elif "audience" in qa.question.lower() and qa.answer:
-            optimized_prompt += f"\nThe target audience is: {qa.answer}."
-        # Example: If question was about programming language
-        elif "programming language" in qa.question.lower() and qa.answer and qa.answer.lower() not in ["any", "none", "n/a", "not specific"]:
-             optimized_prompt += f"\nThe preferred programming language is {qa.answer}."
-        # Example: If question was about tone/style
-        elif "tone" in qa.question.lower() or "style" in qa.question.lower() and qa.answer:
-            optimized_prompt += f"\nUse a {qa.answer} tone/style."
-        # Generic: add other answers as context if not directly actionable as a specific instruction
-        elif qa.answer and qa.answer.lower() not in ["none", "n/a", "not sure"]:
-             optimized_prompt += f"\nConsider also: {qa.question} - {qa.answer}."
+    if questionnaire_answers:
+        for qa in questionnaire_answers:
+            question_lower = qa.question.lower()
+            answer_lower = qa.answer.lower()
 
-    # Apply generic optimization strategies
-    # Strategy 1: Role-playing (simple version)
-    if "act as" not in base_prompt.lower():
-        # Check if any answer already implies a role
-        role_implied = any("role of" in qa.answer.lower() or "act as" in qa.answer.lower() for qa in questionnaire_answers)
-        if not role_implied:
-            optimized_prompt += "\nAct as an expert in the relevant domain."
+            if not qa.answer or answer_lower in ["none", "n/a", "not sure", "any"]:
+                continue
 
-    # Strategy 2: Requesting step-by-step thinking (if not already implied)
-    if "step-by-step" not in base_prompt.lower() and "step by step" not in base_prompt.lower():
-        optimized_prompt += "\nThink step by step to ensure a comprehensive and accurate response."
+            # Strategy: Role-Playing based on answers
+            if ("expert" in answer_lower or "role" in answer_lower or "act as" in answer_lower) and not role_set:
+                # Attempt to extract a specific domain if possible, otherwise generic expert
+                # This is a simple extraction, could be improved with NLP
+                domain = ""
+                if "expert in" in answer_lower:
+                    try:
+                        domain = answer_lower.split("expert in")[1].split(".")[0].split(",")[0].strip()
+                    except IndexError:
+                        domain = "the relevant field"
+                elif "role of" in answer_lower:
+                    try:
+                        domain = answer_lower.split("role of")[1].split(".")[0].split(",")[0].strip()
+                    except IndexError:
+                        domain = "the specified role"
 
-    # Strategy 3: Adding clarity/conciseness request
+                if domain:
+                    optimized_prompt_parts.insert(0, f"You are an expert in {domain}.")
+                else:
+                    optimized_prompt_parts.insert(0, "You are an expert in the relevant domain.")
+                role_set = True
+
+            # Strategy: Output Format based on answers
+            elif "format" in question_lower:
+                if "json" in answer_lower:
+                    optimized_prompt_parts.append("Please provide the output in JSON format.")
+                elif "markdown" in answer_lower:
+                    optimized_prompt_parts.append("Please provide the output in Markdown format.")
+                elif "xml" in answer_lower:
+                    optimized_prompt_parts.append("Please provide the output in XML format.")
+                elif "list" in answer_lower:
+                    optimized_prompt_parts.append("Please provide the output as a list.")
+
+            # Other general context additions from questionnaire
+            elif "length" in question_lower:
+                optimized_prompt_parts.append(f"Ensure the response has a length of approximately: {qa.answer}.")
+            elif "audience" in question_lower:
+                optimized_prompt_parts.append(f"The target audience is: {qa.answer}.")
+            elif "programming language" in question_lower and qa.answer.lower() not in ["any", "none", "n/a", "not specific"]:
+                 optimized_prompt_parts.append(f"The preferred programming language is {qa.answer}.")
+            elif "tone" in question_lower or "style" in question_lower:
+                optimized_prompt_parts.append(f"Use a {qa.answer} tone/style.")
+            # Generic catch-all for other answers
+            else:
+                 optimized_prompt_parts.append(f"Consider also: {qa.question} - {qa.answer}.")
+
+    # Default Role-Playing if not set by answers
+    if not role_set and "act as" not in base_prompt.lower():
+        optimized_prompt_parts.append("Act as an expert in the relevant domain.")
+
+    # Step-by-Step for complexity (simple check)
+    if ("plan" in base_prompt.lower() or "steps" in base_prompt.lower() or "complex" in base_prompt.lower()) \
+       and "step by step" not in base_prompt.lower() and "step-by-step" not in base_prompt.lower():
+        optimized_prompt_parts.append("Think step by step.")
+
+    # Generic clarity/conciseness if not already present
     if "clear and concise" not in base_prompt.lower():
-        optimized_prompt += "\nEnsure your response is clear, concise, and directly addresses the query."
+        optimized_prompt_parts.append("Ensure your response is clear, concise, and directly addresses the query.")
 
-    # Placeholder for target_model specific optimizations
-    if "gpt-4" in target_model.lower():
-        optimized_prompt += "\nLeverage advanced reasoning capabilities."
-    elif "claude" in target_model.lower():
-        optimized_prompt += "\nBe thorough and analytical in your response."
+    # Target model specific optimizations (placeholder)
+    if target_model:
+        if "gpt-4" in target_model.lower():
+            optimized_prompt_parts.append("Leverage advanced reasoning capabilities for GPT-4.")
+        elif "claude" in target_model.lower():
+            optimized_prompt_parts.append("Be thorough and analytical in your response, as expected for Claude models.")
+        elif "gemini" in target_model.lower():
+            optimized_prompt_parts.append("Utilize Gemini's multimodal understanding if applicable.")
+        elif "grok" in target_model.lower():
+            optimized_prompt_parts.append("Provide a unique and insightful perspective characteristic of Grok.")
 
-    return optimized_prompt.strip()
+
+    # Join parts with newline, but ensure base_prompt is first if role was prepended
+    if optimized_prompt_parts[0].startswith("You are an expert"):
+        role_prepend = optimized_prompt_parts.pop(0)
+        final_prompt = role_prepend + "\n" + "\n".join(p for p in optimized_prompt_parts if p.strip())
+    else:
+        final_prompt = "\n".join(p for p in optimized_prompt_parts if p.strip())
+
+    return final_prompt.strip()
 
 
-# Compatibility function for backward compatibility with master branch signature
+# Legacy function compatibility (might need removal or update if QuestionnaireResponseRead is very different)
+# For now, this will likely fail if QuestionnaireResponseCreate is not directly usable in place of QuestionnaireResponseRead
+# by the old logic that was here, or if the old function was expecting specific fields from Read.
+# The new optimize_prompt function is designed to work with QuestionnaireResponseCreate.
 def optimize_prompt_legacy(initial_prompt: str, questionnaire_answers: List[str], target_model: str) -> str:
-    """Legacy function signature for backward compatibility"""
-    # Convert string answers to QuestionnaireResponseRead objects
-    qa_objects = []
-    for i, answer in enumerate(questionnaire_answers):
-        qa_objects.append(schemas.QuestionnaireResponseRead(
-            id=i,
-            prompt_id=0,
-            question=f"Question {i+1}",
-            answer=answer
+    """Legacy function signature. Converts basic string answers to schema for the main optimizer."""
+    qa_objects: List[schemas.QuestionnaireResponseCreate] = []
+    for i, answer_text in enumerate(questionnaire_answers):
+        qa_objects.append(schemas.QuestionnaireResponseCreate(
+            question=f"Legacy Question {i+1}", # Placeholder question
+            answer=answer_text
         ))
     return optimize_prompt(initial_prompt, qa_objects, target_model)

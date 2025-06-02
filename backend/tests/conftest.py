@@ -1,143 +1,76 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import create_engine, Session, SQLModel
-<<<<<<< HEAD
+from sqlmodel import create_engine, Session, SQLModel, MetaData
 from unittest.mock import patch
 import os
+from typing import Generator
 
-# Import the main FastAPI app and the dependency override mechanism
-# Adjust the import path based on your project structure.
-# Assuming 'main.py' is in the 'backend' directory, and 'tests' is also in 'backend'.
-from backend.main import app, get_session  # Main app and original get_session
-from backend import config # To mock API keys
+# Attempt to provide a fresh MetaData object for the test session
+SQLModel.metadata = MetaData() # Reset to a new MetaData for each test session/run
 
-# 1. Mock API Keys before they are loaded by config.py
-# This needs to happen as early as possible.
-# We can patch os.getenv for the specific keys used in config.py
+from backend.main import app, get_db
+from backend import config
+
+# 1. Mock API Keys
 @pytest.fixture(scope="session", autouse=True)
 def mock_api_keys_for_tests():
-    # These environment variables would normally be loaded by dotenv in config.py
-    # For tests, we explicitly set them to mock values or None if the service
-    # should gracefully handle missing keys (which our handlers are designed to do).
-    with patch.dict(os.environ, {
+    mock_env_vars = {
         "OPENAI_API_KEY": "test_openai_key",
         "ANTHROPIC_API_KEY": "test_anthropic_key",
         "XAI_API_KEY": "test_xai_key",
         "GOOGLE_API_KEY": "test_google_key",
-    }):
-        # Additionally, if config.py has already been imported and variables set,
-        # we might need to patch the variables directly in the config module.
-        # This ensures that even if config was imported before this fixture ran its course
-        # (e.g. by another imported module at load time), the values are overridden.
-        with patch.object(config, 'OPENAI_API_KEY', 'test_openai_key'), \
-             patch.object(config, 'ANTHROPIC_API_KEY', 'test_anthropic_key'), \
-             patch.object(config, 'XAI_API_KEY', 'test_xai_key'), \
-             patch.object(config, 'GOOGLE_API_KEY', 'test_google_key'):
+        "BASIC_AUTH_USERNAME": "testuser", # Ensure these are set for tests
+        "BASIC_AUTH_PASSWORD": "testpass",   # Ensure these are set for tests
+    }
+    # Patch os.environ first
+    with patch.dict(os.environ, mock_env_vars):
+        # Then, patch the config module's attributes directly.
+        # This is to handle cases where config might have already loaded values (e.g. defaults)
+        # before os.environ was patched for the test session. `create=True` allows creating if not exist.
+        with patch.object(config, 'OPENAI_API_KEY', 'test_openai_key', create=True), \
+             patch.object(config, 'ANTHROPIC_API_KEY', 'test_anthropic_key', create=True), \
+             patch.object(config, 'XAI_API_KEY', 'test_xai_key', create=True), \
+             patch.object(config, 'GOOGLE_API_KEY', 'test_google_key', create=True), \
+             patch.object(config, 'BASIC_AUTH_USERNAME', 'testuser', create=True), \
+             patch.object(config, 'BASIC_AUTH_PASSWORD', 'testpass', create=True):
+            # Reload settings in config if it uses a function to load them,
+            # or ensure config module is re-imported/re-evaluated if necessary.
+            # For this project, config.py loads on import, so patching os.environ before
+            # most imports and patching config attributes should be robust.
             yield
 
-# 2. In-memory SQLite database fixture
-# Using a session-scoped engine to create it once per test session.
-# Individual test functions will get a new session from this engine.
-SQLITE_DATABASE_URL_TEST = "sqlite:///:memory:"
-test_engine = create_engine(
-    SQLITE_DATABASE_URL_TEST,
-    connect_args={"check_same_thread": False}, # Needed for SQLite
-    echo=False # Can be True for debugging SQL
-)
-
-@pytest.fixture(scope="session")
-def db_engine():
-    # SQLModel.metadata.drop_all(test_engine) # Optional: ensure clean state if run multiple times locally
-    SQLModel.metadata.create_all(test_engine)
-    return test_engine
-
-@pytest.fixture(scope="function") # Each test function gets a fresh session and transaction
-def db_session(db_engine):
-    connection = db_engine.connect()
-    transaction = connection.begin()
-    session = Session(bind=connection, autocommit=False, autoflush=False)
-    yield session
-    session.close()
-    transaction.rollback() # Rollback changes after each test
-    connection.close()
-
-
-# 3. Override get_session dependency for API tests
-# This fixture will provide a test session to the FastAPI app's dependencies.
+# 2. Test Database Setup (Function-scoped engine and tables for full isolation)
 @pytest.fixture(scope="function")
-def test_app_db_session(db_session): # Depends on the db_session fixture
-    # This is the session that will be injected into endpoint dependencies
-    def override_get_session():
-        try:
-            yield db_session
-        finally:
-            # db_session fixture already handles close/rollback
-            pass
+def test_engine_func_scope() -> Generator[create_engine, None, None]:
+    # Each test function gets a completely new in-memory database
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    # The metadata should be the one from SQLModel (which we reset at the top)
+    SQLModel.metadata.create_all(engine, checkfirst=True) # Added checkfirst=True
+    yield engine
+    SQLModel.metadata.drop_all(engine) # Ensure this also works as expected
+    engine.dispose() # Dispose of the engine to close connections
 
-    # Override the dependency in the app
-    original_get_session = app.dependency_overrides.get(get_session)
-    app.dependency_overrides[get_session] = override_get_session
-    yield db_session # Provide the session to the test if needed directly
-
-    # Restore original dependency (or clear it) after the test
-    if original_get_session:
-        app.dependency_overrides[get_session] = original_get_session
-    else:
-        del app.dependency_overrides[get_session]
-
-
-# 4. TestClient fixture
-# This uses the overridden get_session through test_app_db_session
 @pytest.fixture(scope="function")
-def client(test_app_db_session): # Ensures db session override is active
-    # The TestClient will use the app with the overridden dependency
-    with TestClient(app) as c:
-        yield c
-
-# Note: The order of fixtures and their scopes is important.
-# mock_api_keys_for_tests (session, autouse=True) runs first.
-# db_engine (session) sets up the database once.
-# db_session (function) gives a transactional session to each test.
-# test_app_db_session (function) overrides FastAPI's session for a test.
-# client (function) uses the app with the overridden session.
-=======
-from typing import Generator
-
-# Import your FastAPI app and the real get_session dependency
-from backend.main import app
-from backend.database import get_session # This is what we need to override
-
-# Define the test database URL (in-memory SQLite)
-TEST_DATABASE_URL = "sqlite:///:memory:"
-
-# Create a test engine
-test_engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False}, echo=False) # echo=False for cleaner test output
-
-# Fixture for a database session
-@pytest.fixture(scope="function") # "function" scope for test isolation: db is clean for each test
-def db_session() -> Generator[Session, None, None]:
-    # Create tables for each test function
-    SQLModel.metadata.create_all(test_engine)
-
-    with Session(test_engine) as session:
+def db_session(test_engine_func_scope: create_engine) -> Generator[Session, None, None]:
+    # Uses the function-scoped engine
+    with Session(test_engine_func_scope) as session:
         yield session
+    # No create_all/drop_all here, as it's handled by the engine fixture
 
-    # Drop tables after each test function to ensure isolation
-    SQLModel.metadata.drop_all(test_engine)
-
-# Fixture for the TestClient, using the db_session override
-@pytest.fixture(scope="function") # Client should also be function-scoped if db is function-scoped
+# 3. Override get_db dependency and TestClient fixture
+@pytest.fixture(scope="function")
 def client(db_session: Session) -> Generator[TestClient, None, None]:
-
-    # Dependency override for get_session
-    def get_session_override() -> Generator[Session, None, None]:
+    def override_get_db() -> Generator[Session, None, None]:
         yield db_session
 
-    app.dependency_overrides[get_session] = get_session_override
+    original_get_db = app.dependency_overrides.get(get_db)
+    app.dependency_overrides[get_db] = override_get_db
 
     with TestClient(app) as test_client:
         yield test_client
 
     # Clean up dependency overrides
-    app.dependency_overrides.clear()
->>>>>>> origin/master
+    if original_get_db:
+        app.dependency_overrides[get_db] = original_get_db
+    else:
+        app.dependency_overrides.pop(get_db, None)
