@@ -1,18 +1,27 @@
 import React, { useState } from 'react';
 
-const ModelSelector = ({ promptData, setPromptData, nextStep, prevStep }) => {
-  const [selectedModels, setSelectedModels] = useState(promptData.selectedModels);
+const availableModels = [
+  // OpenAI
+  { id: "gpt-4.1", name: "GPT-4.1 (OpenAI)", category: "OpenAI" },
+  { id: "gpt-4.1-mini", name: "GPT-4.1 Mini (OpenAI)", category: "OpenAI" },
+  { id: "gpt-4.1-nano", name: "GPT-4.1 Nano (OpenAI)", category: "OpenAI" },
+  // Anthropic
+  { id: "claude-opus-4", name: "Claude Opus 4 (Anthropic)", category: "Anthropic" },
+  { id: "claude-sonnet-4", name: "Claude Sonnet 4 (Anthropic)", category: "Anthropic" },
+  // xAI
+  { id: "grok-3", name: "Grok-3 (xAI)", category: "xAI" },
+  { id: "grok-3-mini", name: "Grok-3 Mini (xAI)", category: "xAI" },
+  // Google
+  { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro (Google)", category: "Google" },
+  { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash (Google)", category: "Google" },
+];
 
-  const models = [
-    { id: 'openai-gpt4', name: 'OpenAI GPT-4.1', description: 'Advanced reasoning and analysis' },
-    { id: 'anthropic-claude', name: 'Anthropic Claude Sonnet 4', description: 'Hybrid reasoning and coding' },
-    { id: 'xai-grok', name: 'xAI Grok-3', description: 'Advanced reasoning with Think mode' },
-    { id: 'google-gemini', name: 'Google Gemini 2.5 Pro', description: 'Multimodal with Deep Think' }
-  ];
+const ModelSelector = ({ onSelectModels, isLoading, recommendedModels = [] }) => {
+  const [selectedModels, setSelectedModels] = useState([]);
 
   const handleModelToggle = (modelId) => {
-    setSelectedModels(prev => 
-      prev.includes(modelId) 
+    setSelectedModels(prev =>
+      prev.includes(modelId)
         ? prev.filter(id => id !== modelId)
         : [...prev, modelId]
     );
@@ -21,52 +30,63 @@ const ModelSelector = ({ promptData, setPromptData, nextStep, prevStep }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (selectedModels.length > 0) {
-      setPromptData({ ...promptData, selectedModels });
-      nextStep();
+      onSelectModels(selectedModels);
+    } else {
+      // Optionally, provide feedback if no models are selected
+      alert("Please select at least one model.");
     }
   };
 
+  // Group models by category for better display
+  const modelsByCategory = availableModels.reduce((acc, model) => {
+    acc[model.category] = acc[model.category] || [];
+    acc[model.category].push(model);
+    return acc;
+  }, {});
+
   return (
-    <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-semibold mb-4">Select Language Models</h2>
-      <p className="text-gray-600 mb-6">Choose which models you'd like to optimize your prompt for:</p>
+    <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-3xl mx-auto mt-8">
+      <h2 className="text-2xl font-semibold mb-2 text-white">Select Models</h2>
+      <p className="text-sm text-gray-400 mb-6">Choose which models you'd like to get responses from.</p>
       
       <form onSubmit={handleSubmit}>
-        <div className="space-y-4 mb-6">
-          {models.map((model) => (
-            <div key={model.id} className="border rounded-lg p-4">
-              <label className="flex items-start cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectedModels.includes(model.id)}
-                  onChange={() => handleModelToggle(model.id)}
-                  className="mt-1 mr-3"
-                />
-                <div>
-                  <h3 className="font-medium text-gray-900">{model.name}</h3>
-                  <p className="text-sm text-gray-600">{model.description}</p>
-                </div>
-              </label>
+        <div className="space-y-6 mb-6">
+          {Object.entries(modelsByCategory).map(([category, models]) => (
+            <div key={category}>
+              <h3 className="text-lg font-medium text-indigo-400 mb-3">{category}</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {models.map((model) => (
+                  <label
+                    key={model.id}
+                    className={`flex items-center p-4 rounded-lg transition-all duration-150 cursor-pointer
+                                ${selectedModels.includes(model.id) ? 'bg-indigo-600 ring-2 ring-indigo-400' : 'bg-gray-700 hover:bg-gray-600'}
+                                ${recommendedModels.includes(model.name) ? 'border-2 border-green-500' : 'border border-gray-600'}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedModels.includes(model.id)}
+                      onChange={() => handleModelToggle(model.id)}
+                      className="form-checkbox h-5 w-5 text-indigo-500 bg-gray-800 border-gray-600 rounded focus:ring-indigo-400 focus:ring-offset-0 mr-3"
+                      disabled={isLoading}
+                    />
+                    <span className={`text-sm font-medium ${selectedModels.includes(model.id) ? 'text-white' : 'text-gray-200'}`}>
+                      {model.name}
+                      {recommendedModels.includes(model.name) && <span className="text-xs text-green-400 ml-2">(Recommended)</span>}
+                    </span>
+                  </label>
+                ))}
+              </div>
             </div>
           ))}
         </div>
 
-        <div className="flex space-x-4">
-          <button
-            type="button"
-            onClick={prevStep}
-            className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400 transition duration-200"
-          >
-            Back
-          </button>
-          <button
-            type="submit"
-            disabled={selectedModels.length === 0}
-            className="flex-1 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 disabled:bg-gray-300 transition duration-200"
-          >
-            Generate Optimized Prompts
-          </button>
-        </div>
+        <button
+          type="submit"
+          className="w-full bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 transition duration-150 disabled:opacity-50"
+          disabled={isLoading || selectedModels.length === 0}
+        >
+          {isLoading ? 'Processing...' : 'Get Model Responses'}
+        </button>
       </form>
     </div>
   );

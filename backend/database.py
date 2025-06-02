@@ -1,18 +1,14 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from models import Base, User, Prompt, QuestionnaireResponse, ModelOutput
+from sqlmodel import create_engine, SQLModel, Session
 
 DATABASE_URL = "sqlite:///./prompts.db"
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# The connect_args={"check_same_thread": False} is needed only for SQLite.
+# It's not needed for other databases.
+engine = create_engine(DATABASE_URL, echo=True, connect_args={"check_same_thread": False})
 
-def create_tables():
-    Base.metadata.create_all(bind=engine)
+def create_db_and_tables():
+    SQLModel.metadata.create_all(engine)
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+def get_session():
+    with Session(engine) as session:
+        yield session

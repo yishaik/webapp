@@ -1,38 +1,36 @@
 import React, { useState } from 'react';
 
-const PromptInput = ({ promptData, setPromptData, nextStep }) => {
-  const [basePrompt, setBasePrompt] = useState(promptData.basePrompt);
+const PromptInput = ({ onSubmit, isLoading }) => {
+  const [basePrompt, setBasePrompt] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (basePrompt.trim()) {
-      setPromptData({ ...promptData, basePrompt });
-      nextStep();
+      onSubmit(basePrompt);
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-semibold mb-4">Enter Your Base Prompt</h2>
+    <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-2xl mx-auto">
+      <h2 className="text-2xl font-semibold mb-4 text-white">Enter Your Base Prompt</h2>
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            What would you like to accomplish?
-          </label>
           <textarea
             value={basePrompt}
             onChange={(e) => setBasePrompt(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-3 border border-gray-700 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-150"
             rows="6"
-            placeholder="Describe your task or the type of response you're looking for..."
+            placeholder="e.g., Explain quantum computing in simple terms..."
             required
+            disabled={isLoading}
           />
         </div>
         <button
           type="submit"
-          className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition duration-200"
+          className="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 transition duration-150 disabled:opacity-50"
+          disabled={isLoading}
         >
-          Continue to Model Selection
+          {isLoading ? 'Loading...' : 'Generate Questionnaire'}
         </button>
       </form>
     </div>
