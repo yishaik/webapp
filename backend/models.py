@@ -1,70 +1,42 @@
-from pydantic import BaseModel
 from datetime import datetime
 from typing import List, Optional
 
-class UserBase(BaseModel):
-    username: str
-    email: str
+from sqlmodel import Field, Relationship, SQLModel
 
-class UserCreate(UserBase):
-    pass
 
-class User(UserBase):
-    id: int
-    
-    class Config:
-        from_attributes = True
+class User(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True, index=True)
+    username: str = Field(unique=True, index=True)
 
-class PromptBase(BaseModel):
-    base_prompt: str
+    prompts: List["Prompt"] = Relationship(back_populates="user")
 
-class PromptCreate(PromptBase):
-    user_id: int
 
-class Prompt(PromptBase):
-    id: int
-    user_id: int
-    timestamp: datetime
-    
-    class Config:
-        from_attributes = True
+class Prompt(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True, index=True)
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id", nullable=True, index=True)
+    base_prompt: str = Field(sa_column_kwargs={"type": "Text"}) # Using Text for potentially long prompts
+    timestamp: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"default": datetime.utcnow})
 
-class QuestionnaireResponseBase(BaseModel):
-    question: str
-    answer: str
+    user: Optional[User] = Relationship(back_populates="prompts")
+    questionnaire_responses: List["QuestionnaireResponse"] = Relationship(back_populates="prompt")
+    model_outputs: List["ModelOutput"] = Relationship(back_populates="prompt")
 
-class QuestionnaireResponseCreate(QuestionnaireResponseBase):
-    prompt_id: int
 
-class QuestionnaireResponse(QuestionnaireResponseBase):
-    id: int
-    prompt_id: int
-    
-    class Config:
-        from_attributes = True
+class QuestionnaireResponse(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True, index=True)
+    prompt_id: int = Field(foreign_key="prompt.id", index=True)
+    question: str = Field(sa_column_kwargs={"type": "Text"})
+    answer: str = Field(sa_column_kwargs={"type": "Text"})
 
-class ModelOutputBase(BaseModel):
+    prompt: "Prompt" = Relationship(back_populates="questionnaire_responses")
+
+
+class ModelOutput(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True, index=True)
+    prompt_id: int = Field(foreign_key="prompt.id", index=True)
     model_name: str
-    optimized_prompt: str
-    output: str
+    # optimized_prompt: str = Field(sa_column_kwargs={"type": "Text"}) # This field was in the old pydantic model but not in the new requirements
+    output: str = Field(sa_column_kwargs={"type": "Text"})
+    timestamp: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"default": datetime.utcnow})
 
-class ModelOutputCreate(ModelOutputBase):
-    prompt_id: int
-
-class ModelOutput(ModelOutputBase):
-    id: int
-    prompt_id: int
-    timestamp: datetime
-    
-    class Config:
-        from_attributes = True
-
-class PromptOptimizationRequest(BaseModel):
-    base_prompt: str
-    questionnaire_responses: List[QuestionnaireResponseBase]
-    selected_models: List[str]
-
-class OptimizedPromptResponse(BaseModel):
-    model_name: str
-    optimized_prompt: str
-    output: Optional[str] = None
+    prompt: "Prompt" = Relationship(back_populates="model_outputs")
